@@ -1,0 +1,6 @@
+/cdk/node_modules
+/cdk/cdk.out
+
+/src/go/logs/**
+!/src/go/logs/.gitkeep
+src/docker/volume
