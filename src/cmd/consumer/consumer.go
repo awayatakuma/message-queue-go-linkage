@@ -18,7 +18,6 @@ import (
 )
 
 func main() {
-	consts.Setup()
 	time_stamp_logger.Initial("sdk")
 	ctx := context.TODO()
 
@@ -44,12 +43,11 @@ func main() {
 		fmt.Printf("failed to set locale.")
 		return
 	}
-	fmt.Println("プログラムが開始されました。Ctrl+Cを押すと終了します。")
+	fmt.Println("Programming is running... You can stop the process with Ctrl+C")
 	i := 0
 	go func() {
 		input := &sqs.ReceiveMessageInput{
-			QueueUrl: aws.String(consts.QUEUE_URL),
-			// チューニングポイント
+			QueueUrl:            aws.String(consts.QUEUE_URL),
 			MaxNumberOfMessages: 1,
 			WaitTimeSeconds:     20,
 		}
@@ -79,9 +77,10 @@ func main() {
 				if err != nil {
 					panic(err)
 				}
+				fmt.Printf("Received message: %v\n", jsonMap["HostName"])
 				var data consts.Data
 
-				if err := json.Unmarshal([]byte(fmt.Sprintf("%v", jsonMap["Message"])), &data); err != nil {
+				if err := json.Unmarshal([]byte(fmt.Sprintf("%v", *msg.Body)), &data); err != nil {
 					panic(fmt.Sprintf("fail to unmarshal msg: %v\n", err))
 				}
 				fmt.Printf("Unmarshaled data:%+v\n", data)
@@ -92,14 +91,12 @@ func main() {
 					break
 				}
 				time_stamp_logger.Write(data.Id, start, stop)
-
 			}
-
 		}
 	}()
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
 	<-sigs
-	fmt.Println("Ctrl+Cが押されました。プログラムを終了します。")
+	fmt.Println("Ctrl+C is pressed... The program is shutting down.")
 	time_stamp_logger.Stop()
 }

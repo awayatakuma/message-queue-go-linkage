@@ -14,19 +14,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
 func main() {
-	consts.Setup()
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	cfg, err := config.LoadDefaultConfig(
 		ctx,
 		config.WithEndpointResolverWithOptions(
 			aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 				return aws.Endpoint{
-					URL:           consts.ENDPOINT_URL_SNS,
+					URL:           consts.QUEUE_URL,
 					SigningRegion: "ap-northeast-1",
 				}, nil
 			}),
@@ -36,18 +35,17 @@ func main() {
 		log.Fatalf("LoadDefaultConfig failed:%v", err)
 	}
 	// Create SNS client
-	svc := sns.NewFromConfig(cfg)
+	svc := sqs.NewFromConfig(cfg)
 
-	fmt.Println("プログラムが開始されました。Ctrl+Cを押すと終了します。")
+	fmt.Println("Programming is running... You can stop the process with Ctrl+C")
 	i := 0
 	loc, _ := time.LoadLocation("UTC")
 	go func() {
 		for {
 			i++
 			time.Sleep(100_000_000)
-			// Publish a message to a topic
 			data := &consts.Data{
-				HostName:  "go-sns-sqs-go-publisher",
+				HostName:  "sqs-publisher",
 				TimeStamp: time.Now().Local().In(loc).Format(time.RFC3339Nano),
 				Id:        i,
 				Payload:   "Message " + strconv.Itoa(i),
@@ -57,11 +55,11 @@ func main() {
 				log.Fatalf("failed to marshal: %v", err)
 			}
 			fmt.Printf("inbound val: %v\n", string(msg))
-			result, err := svc.Publish(
+			result, err := svc.SendMessage(
 				ctx,
-				&sns.PublishInput{
-					Message:        aws.String(string(msg)),
-					TopicArn:       aws.String(consts.TOPIC_ARN),
+				&sqs.SendMessageInput{
+					MessageBody:    aws.String(string(msg)),
+					QueueUrl:       aws.String(consts.QUEUE_URL),
 					MessageGroupId: aws.String("singleton"),
 				})
 			if err != nil {
@@ -75,5 +73,5 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
 	<-sigs
-	fmt.Println("Ctrl+Cが押されました。プログラムを終了します。")
+	fmt.Println("Ctrl+C is pressed... The program is shutting down.")
 }

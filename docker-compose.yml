@@ -4,14 +4,14 @@ services:
     container_name: go-awsclient
     build:
       context: .
-      dockerfile: ./docker/go/Dockerfile
+      dockerfile: ./docker/Dockerfile
     tty: true
     stdin_open: true
     ports:
       - 1323:1323
     volumes:
       - ./src:/go/app
+      - ~/.aws:/root/.aws:ro
     environment:
-      - ENV=remote
       - LOCAL_UID=1000
       - LOCAL_GID=1000
